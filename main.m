@@ -1,4 +1,5 @@
 readISC = true; % Keep it false to not overwrite current isc data
+infDiag = true;
 
 %vars = {'eda_all_classes', 'hr_all_classes'};
 %vars = {'hr_all_classes', 'eda_all_classes'};
@@ -138,8 +139,41 @@ writematrix(groupList{1},'conditionSchool_EDA.csv')
 writematrix(groupList{2},'conditionSchool_IBI.csv')
 
 %% READ SYNCHRONY MATRIX IN CSV 
-isc = readmatrix('schoolInf_IBI.csv');
-
+if readISC
+    if infDiag
+        if length(vars) == 2
+            if startsWith(vars{1},'eda')
+                isc{1} = readmatrix('schoolInf_EDA.csv');
+                isc{2} = readmatrix('schoolInf_IBI.csv');
+            else
+                isc{1} = readmatrix('schoolInf_IBI.csv');
+                isc{2} = readmatrix('schoolInf_EDA.csv');
+            end
+        else
+            if startsWith(vars{1},'eda')
+                isc{1} = readmatrix('schoolInf_EDA.csv');
+            else
+                isc{1} = readmatrix('schoolInf_IBI.csv');
+            end
+        end
+    else
+        if length(vars) == 2
+        if startsWith(vars{1},'eda')
+            isc{1} = readmatrix('school_EDA.csv');
+            isc{2} = readmatrix('school_IBI.csv');
+        else
+            isc{1} = readmatrix('school_IBI.csv');
+            isc{2} = readmatrix('school_EDA.csv');
+        end
+    else
+        if startsWith(vars{1},'eda')
+            isc{1} = readmatrix('school_EDA.csv');
+        else
+            isc{1} = readmatrix('school_IBI.csv');
+        end
+        end
+    end
+end
 %% COMPUTE SYNCHRONY WITH OWN GROUP AND OTHER GROUP
 
 isc_to_group = cell(1, length(vars));
@@ -148,7 +182,7 @@ accuracy = zeros(1, length(vars));
 periodToLookAt = 1:7;
 tmpnSubj = nSubj;
 tmpnSubj = zeros(size(tmpnSubj));
-tmpnSubj(periodToLookAt,:) = nSubj(periodToLookAt,:)
+tmpnSubj(periodToLookAt,:) = nSubj(periodToLookAt,:);
 nPeriod = length(periodToLookAt);
 
 for var = 1 : length(vars)
@@ -161,7 +195,7 @@ for var = 1 : length(vars)
             sum(tmpnSubj(1:period-1,var))+n1
             isc{var}(n1, setdiff(find(groupList{var} == groupList{var}(n1)), n1), period)
             isc_to_group{var}(sum(tmpnSubj(1:period-1,var))+n1,1) = nanmean(isc{var}(n1, setdiff(find(groupList{var} == groupList{var}(n1)), n1), period)); % ISC within group
-            if (nPeriod > 1)
+            if (length(periodToLookAt) > 1)
                 isc_to_group{var}(sum(tmpnSubj(1:period-1,var))+n1,2) = nanmean(isc{var}(n1, groupList{var} ~= groupList{var}(n1),setdiff(1:nPeriod, period)),'all'); % ISC between groups
             else
                 isc_to_group{var}(sum(tmpnSubj(1:period-1,var))+n1,2) = nanmean(isc{var}(n1, groupList{var} ~= groupList{var}(n1)),'all'); % ISC between groups
