@@ -1,13 +1,16 @@
 readISC = true; % Keep it false to not overwrite current isc data
 infDiag = true;
+periodStudied = 1:7;
 
-%vars = {'eda_all_classes', 'hr_all_classes'};
-%vars = {'hr_all_classes', 'eda_all_classes'};
-vars = {'hr_all_classes'};
+% vars = {'eda_all_classes', 'hr_all_classes'};
+% vars = {'hr_all_classes', 'eda_all_classes'};
+% vars = {'hr_all_classes'};
+vars = {'eda_all_classes'};
 
-%var_srate = [32, 1];
-%var_srate = [1,32]; 
-var_srate = [1];
+% var_srate = [32, 1];
+% var_srate = [1,32]; 
+% var_srate = [1];
+var_srate = [32];
 
 T = 50 * 60; % recording time [s]
 t0 = 5 * 60; % start time of analysis [s];
@@ -20,6 +23,7 @@ nPeriod = zeros(1, length(vars));
 for var = 1 : length(vars)
     path2file = fullfile(filepath, ['for_synchrony_', vars{var}]);
     load(path2file);
+    sig_firstclass_all = sig_firstclass_all(:,periodStudied);
     nPeriod = size(sig_firstclass_all,2);
 end
 nSubj = zeros(nPeriod, length(vars));
@@ -31,7 +35,7 @@ for var = 1 : length(vars)
     % load data
     path2file = fullfile(filepath, ['for_synchrony_', vars{var}]);
     load(path2file);
-    %sig_firstclass_all = sig_firstclass_all(:,1);
+    sig_firstclass_all = sig_firstclass_all(:,periodStudied);
     
     % sort participants
     %[nPeriod,idx] = sort(sum(cellfun(@(x) length(x), sig_firstclass_all)>0,2),'descend');
@@ -42,7 +46,10 @@ for var = 1 : length(vars)
     nTime(var) = T*var_srate(var); % 50 min x 60 sec / min x 32 samp / sec %nb of times for each modality
     data{var} = nan(nSubj(1,var), nTime(var),nPeriod); % will become physiological signals
     groupList{var} = zeros(nSubj(1,var), 1); % will become IDs
-    
+
+    nSubjectStudied = 11;
+    % nSubjectStudied = nSubj(1,var);
+
     % fill matrix 'data' with responses
     subj = 0;
     for cl = 1 : length(sig_firstclass_all)
@@ -70,27 +77,31 @@ if readISC % we can safely compute new ISC as it has been stored in CSV
     readISC = false;
     isc = cell(1, length(vars));
     for var = 1 : length(vars)
-        isc{var} = nan(nSubj(1,var), nSubj(1,var),nPeriod);
-        for n1 = 1 : nSubj(1,var)
-            disp(n1/nSubj(1,var)*100)
-            for n2 = n1 : nSubj(1,var)
-                disp(n2)
-                for period = 1 : nPeriod
-                    % present data in a struct input needed for 'ps_mwa'
-                    dat_subj_1.data = data{var}(n1,t0*var_srate(var)+1:t1*var_srate(var),period);
-                    dat_subj_1.samplerate = var_srate(var);
+        isc{var} = nan(nSubj(1,var), nSubj(1,var),nPeriod,nPeriod);
+        for n1 = 1 : nSubjectStudied
+            disp(n1/nSubjectStudied*100)
+            for period1 = 1 : nPeriod
+                period1
+                for n2 = n1 : nSubjectStudied
+                    disp(n2)
+                    for period2 = period1 : nPeriod
+                        % present data in a struct input needed for 'ps_mwa'
+                        dat_subj_1.data = data{var}(n1,t0*var_srate(var)+1:t1*var_srate(var),period1);
+                        dat_subj_1.samplerate = var_srate(var);
 
-                    dat_subj_2.data = data{var}(n2,t0*var_srate(var)+1:t1*var_srate(var),period);
-                    dat_subj_2.samplerate = var_srate(var);
+                        dat_subj_2.data = data{var}(n2,t0*var_srate(var)+1:t1*var_srate(var),period2);
+                        dat_subj_2.samplerate = var_srate(var);
 
-                    r = ps_mwa(dat_subj_1, dat_subj_2, ...
-                            'CorWindow', 15, ...
-                            'CorStep', 1); % synchrony signal
+                        r = ps_mwa(dat_subj_1, dat_subj_2, ...
+                                'CorWindow', 15, ...
+                                'CorStep', 1); % synchrony signal
 
-                    isc{var}(n1,n2,period) = nanmean(r.data(8:end-8)); % To avoid Inf on diagonal
-                    %isc{var}(n1,n2,period) = r.overall; % usual way to compute synchrony
+                        isc{var}(n1,n2,period1,period2) = nanmean(r.data(8:end-8)); % To avoid Inf on diagonal
+                        % isc{var}(n1,n2,period1,period2) = r.overall; % usual way to compute synchrony
+                    end
                 end
             end
+            
         end
     end
 end
@@ -135,8 +146,8 @@ end
 readISC = true;
 
 %% WRITE TRUE GROUPS in CSV
-writematrix(groupList{1},'conditionSchool_EDA.csv')
-writematrix(groupList{2},'conditionSchool_IBI.csv')
+% writematrix(groupList{1},'conditionSchool_EDA.csv')
+% writematrix(groupList{2},'conditionSchool_IBI.csv')
 
 %% READ SYNCHRONY MATRIX IN CSV 
 if readISC
@@ -179,24 +190,30 @@ end
 isc_to_group = cell(1, length(vars));
 accuracy = zeros(1, length(vars));
 
-periodToLookAt = 1:7;
+periodToLookAt = 1;
+periodToLookAt = periodStudied;
+
 tmpnSubj = nSubj;
 tmpnSubj = zeros(size(tmpnSubj));
 tmpnSubj(periodToLookAt,:) = nSubj(periodToLookAt,:);
 nPeriod = length(periodToLookAt);
 
 for var = 1 : length(vars)
-    var
+    %var
     isc_to_group{var} = zeros(sum(tmpnSubj(:,var)), 2);
     for period = periodToLookAt
-        period
+        %period
         for n1 = 1 : tmpnSubj(period,var)
-            n1
-            sum(tmpnSubj(1:period-1,var))+n1
-            isc{var}(n1, setdiff(find(groupList{var} == groupList{var}(n1)), n1), period)
-            isc_to_group{var}(sum(tmpnSubj(1:period-1,var))+n1,1) = nanmean(isc{var}(n1, setdiff(find(groupList{var} == groupList{var}(n1)), n1), period)); % ISC within group
+            %n1
+            %sum(tmpnSubj(1:period2-1,var))+n1
+            isc{var}(n1, setdiff(find(groupList{var} == groupList{var}(n1)), n1), period,period) % disp
+
+            % own group
+            isc_to_group{var}(sum(tmpnSubj(1:period-1,var))+n1,1) = nanmean(isc{var}(n1, setdiff(find(groupList{var} == groupList{var}(n1)), n1), period, period)); % ISC within group
+
+            % other group
             if (length(periodToLookAt) > 1)
-                isc_to_group{var}(sum(tmpnSubj(1:period-1,var))+n1,2) = nanmean(isc{var}(n1, groupList{var} ~= groupList{var}(n1),setdiff(1:nPeriod, period)),'all'); % ISC between groups
+                isc_to_group{var}(sum(tmpnSubj(1:period-1,var))+n1,2) = nanmean(isc{var}(n1, groupList{var} ~= groupList{var}(n1),setdiff(1:nPeriod, period),setdiff(1:nPeriod, period)),'all'); % ISC between groups
             else
                 isc_to_group{var}(sum(tmpnSubj(1:period-1,var))+n1,2) = nanmean(isc{var}(n1, groupList{var} ~= groupList{var}(n1)),'all'); % ISC between groups
             end
