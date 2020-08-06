@@ -1,6 +1,6 @@
 readISC = true; % Keep it false to not overwrite current isc data
 infDiag = false;
-periodStudied = 1:7;
+periodStudied = 1:2;
 
 % vars = {'eda_all_classes', 'hr_all_classes'};
 % vars = {'hr_all_classes', 'eda_all_classes'};
@@ -45,14 +45,19 @@ for var = 1 : length(vars)
     nSubj(:,var) = sum(cellfun(@(x) length(x), sig_firstclass_all)); %nb of subjects for each modality
     nTime(var) = T*var_srate(var); % 50 min x 60 sec / min x 32 samp / sec %nb of times for each modality
     data{var} = nan(nSubj(1,var), nTime(var),nPeriod); % will become physiological signals
-    groupList{var} = zeros(nSubj(1,var), 1); % will become IDs
 
     nSubjectStudied = 12;
+    nClusters = cellfun(@(x) length(x), sig_firstclass_all);
+    nClusters = cumsum(nClusters(:,1));
+    nClusters = find(nClusters==nSubjectStudied);
     % nSubjectStudied = nSubj(1,var);
 
+    groupList{var} = zeros(nSubjectStudied, 1); % will become IDs
+    
     % fill matrix 'data' with responses
     subj = 0;
-    for cl = 1 : length(sig_firstclass_all)
+    
+    for cl = 1 : nClusters
         for subj_in_cl = 1 : length(sig_firstclass_all{cl})
             subj = subj + 1;
             groupList{var}(subj) = cl;
@@ -77,14 +82,19 @@ if readISC % we can safely compute new ISC as it has been stored in CSV
     readISC = false;
     isc = cell(1, length(vars));
     for var = 1 : length(vars)
-        isc{var} = nan(nSubj(1,var), nSubj(1,var),nPeriod,nPeriod);
+        isc{var} = nan(nSubjectStudied, nSubjectStudied,nPeriod,nPeriod);
         for n1 = 1 : nSubjectStudied
             disp(n1/nSubjectStudied*100)
             for period1 = 1 : nPeriod
                 period1
-                for n2 = n1 : nSubjectStudied
+                for period2 = period1 : nPeriod
+                    if period2 == period1
+                        bound = n1;
+                    else
+                        bound = 1;
+                    end
+                    for n2 = bound : nSubjectStudied
                     % disp(n2)
-                    for period2 = period1 : nPeriod
                         % present data in a struct input needed for 'ps_mwa'
                         dat_subj_1.data = data{var}(n1,t0*var_srate(var)+1:t1*var_srate(var),period1);
                         dat_subj_1.samplerate = var_srate(var);
@@ -210,7 +220,7 @@ for var = 1 : length(vars)
     isc_to_group{var} = zeros(sum(tmpnSubj(:,var)), 2);
     for period = periodToLookAt
         %period
-        for n1 = 1 : tmpnSubj(period,var)
+        for n1 = 1 : nSubjectStudied
             %n1
             %sum(tmpnSubj(1:period2-1,var))+n1
             isc{var}(n1, setdiff(find(groupList{var} == groupList{var}(n1)), n1), period,period) % disp
