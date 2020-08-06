@@ -1,5 +1,5 @@
 readISC = true; % Keep it false to not overwrite current isc data
-infDiag = true;
+infDiag = false;
 periodStudied = 1:7;
 
 % vars = {'eda_all_classes', 'hr_all_classes'};
@@ -47,7 +47,7 @@ for var = 1 : length(vars)
     data{var} = nan(nSubj(1,var), nTime(var),nPeriod); % will become physiological signals
     groupList{var} = zeros(nSubj(1,var), 1); % will become IDs
 
-    nSubjectStudied = 11;
+    nSubjectStudied = 12;
     % nSubjectStudied = nSubj(1,var);
 
     % fill matrix 'data' with responses
@@ -83,7 +83,7 @@ if readISC % we can safely compute new ISC as it has been stored in CSV
             for period1 = 1 : nPeriod
                 period1
                 for n2 = n1 : nSubjectStudied
-                    disp(n2)
+                    % disp(n2)
                     for period2 = period1 : nPeriod
                         % present data in a struct input needed for 'ps_mwa'
                         dat_subj_1.data = data{var}(n1,t0*var_srate(var)+1:t1*var_srate(var),period1);
@@ -96,8 +96,11 @@ if readISC % we can safely compute new ISC as it has been stored in CSV
                                 'CorWindow', 15, ...
                                 'CorStep', 1); % synchrony signal
 
-                        isc{var}(n1,n2,period1,period2) = nanmean(r.data(8:end-8)); % To avoid Inf on diagonal
-                        % isc{var}(n1,n2,period1,period2) = r.overall; % usual way to compute synchrony
+                        if infDiag
+                            isc{var}(n1,n2,period1,period2) = r.overall; % usual way to compute synchrony
+                        else
+                            isc{var}(n1,n2,period1,period2) = nanmean(r.data(8:end-8)); % To avoid Inf on diagonal
+                        end
                     end
                 end
             end
@@ -110,33 +113,41 @@ if ~readISC % ISC has not been written yet, so we can do it.
     if isc{1}(1,1,1) == Inf
         if length(vars) == 2
             if startsWith(vars{1},'eda')
-                writematrix(isc{1},'schoolInf_EDA.csv')
-                writematrix(isc{2},'schoolInf_IBI.csv')
+                writematrix(isc{1},strcat('schoolInf_EDA',num2str(nSubjectStudied),'.csv'));
+                writematrix(isc{2},strcat('schoolInf_IBI',num2str(nSubjectStudied),'.csv'));
+                save(strcat('schoolInf_EDA_IBI',num2str(nSubjectStudied),'.mat'),'isc');
             else
-                writematrix(isc{1},'schoolInf_IBI.csv')
-                writematrix(isc{2},'schoolInf_EDA.csv')
+                writematrix(isc{1},strcat('schoolInf_IBI',num2str(nSubjectStudied),'.csv'));
+                writematrix(isc{2},strcat('schoolInf_EDA',num2str(nSubjectStudied),'.csv'));
+                save(strcat('schoolInf_IBI_EDA',num2str(nSubjectStudied),'.mat'),'isc');
             end
         else
             if startsWith(vars{1},'eda')
-                writematrix(isc{1},'schoolInf_EDA.csv')
+                writematrix(isc{1},strcat('schoolInf_EDA',num2str(nSubjectStudied),'.csv'));
+                save(strcat('schoolInf_EDA',num2str(nSubjectStudied),'.mat'),'isc');
             else
-                writematrix(isc{1},'schoolInf_IBI.csv')
+                writematrix(isc{1},strcat('schoolInf_IBI',num2str(nSubjectStudied),'.csv'));
+                save(strcat('schoolInf_IBI',num2str(nSubjectStudied),'.mat'),'isc');
             end
         end
     else
         if length(vars) == 2
             if startsWith(vars{1},'eda')
-                writematrix(isc{1},'school_EDA.csv')
-                writematrix(isc{2},'school_IBI.csv')
+                writematrix(isc{1},strcat('school_EDA',num2str(nSubjectStudied),'.csv'));
+                writematrix(isc{2},strcat('school_IBI',num2str(nSubjectStudied),'.csv'));
+                save(strcat('school_EDA_IBI',num2str(nSubjectStudied),'.mat'),'isc');
             else
-                writematrix(isc{1},'school_IBI.csv')
-                writematrix(isc{2},'school_EDA.csv')
+                writematrix(isc{1},strcat('school_IBI',num2str(nSubjectStudied),'.csv'));
+                writematrix(isc{2},strcat('school_EDA',num2str(nSubjectStudied),'.csv'));
+                save(strcat('school_IBI_EDA',num2str(nSubjectStudied),'.mat'),'isc');
             end
         else
             if startsWith(vars{1},'eda')
-                writematrix(isc{1},'school_EDA.csv')
+                writematrix(isc{1},strcat('school_EDA',num2str(nSubjectStudied),'.csv'));
+                save(strcat('school_EDA',num2str(nSubjectStudied),'.mat'),'isc');
             else
-                writematrix(isc{1},'school_IBI.csv')
+                writematrix(isc{1},strcat('school_IBI',num2str(nSubjectStudied),'.csv'));
+                save(strcat('school_IBI',num2str(nSubjectStudied),'.mat'),'isc');
             end
         end
     end
@@ -154,34 +165,30 @@ if readISC
     if infDiag
         if length(vars) == 2
             if startsWith(vars{1},'eda')
-                isc{1} = readmatrix('schoolInf_EDA.csv');
-                isc{2} = readmatrix('schoolInf_IBI.csv');
+                load(strcat('schoolInf_EDA_IBI',num2str(nSubjectStudied),'.mat'),'isc');
             else
-                isc{1} = readmatrix('schoolInf_IBI.csv');
-                isc{2} = readmatrix('schoolInf_EDA.csv');
+                load(strcat('schoolInf_IBI_EDA',num2str(nSubjectStudied),'.mat'),'isc');
             end
         else
             if startsWith(vars{1},'eda')
-                isc{1} = readmatrix('schoolInf_EDA.csv');
+                load(strcat('schoolInf_EDA',num2str(nSubjectStudied),'.mat'),'isc');
             else
-                isc{1} = readmatrix('schoolInf_IBI.csv');
+                load(strcat('schoolInf_IBI',num2str(nSubjectStudied),'.mat'),'isc');
             end
         end
     else
         if length(vars) == 2
-        if startsWith(vars{1},'eda')
-            isc{1} = readmatrix('school_EDA.csv');
-            isc{2} = readmatrix('school_IBI.csv');
+            if startsWith(vars{1},'eda')
+                load(strcat('school_EDA_IBI',num2str(nSubjectStudied),'.mat'),'isc');
+            else
+                load(strcat('school_IBI_EDA',num2str(nSubjectStudied),'.mat'),'isc');
+            end
         else
-            isc{1} = readmatrix('school_IBI.csv');
-            isc{2} = readmatrix('school_EDA.csv');
-        end
-    else
-        if startsWith(vars{1},'eda')
-            isc{1} = readmatrix('school_EDA.csv');
-        else
-            isc{1} = readmatrix('school_IBI.csv');
-        end
+            if startsWith(vars{1},'eda')
+                load(strcat('school_EDA',num2str(nSubjectStudied),'.mat'),'isc');
+            else
+                load(strcat('school_IBI',num2str(nSubjectStudied),'.mat'),'isc');
+            end
         end
     end
 end
