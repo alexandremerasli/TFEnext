@@ -1,6 +1,6 @@
 readISC = true; % Keep it false to not overwrite current isc data
 infDiag = false;
-periodStudied = 1:3;
+periodStudied = 1:2;
 
 % vars = {'eda_all_classes', 'hr_all_classes'};
 % vars = {'hr_all_classes', 'eda_all_classes'};
@@ -42,15 +42,16 @@ for var = 1 : length(vars)
     
     
     % compute number of subjects
-    nSubj(:,var) = sum(cellfun(@(x) length(x), sig_firstclass_all)); %nb of subjects for each modality
-    nTime(var) = T*var_srate(var); % 50 min x 60 sec / min x 32 samp / sec %nb of times for each modality
-    data{var} = nan(nSubj(1,var), nTime(var),nPeriod); % will become physiological signals
-
     nSubjectStudied = 12;
     nClusters = cellfun(@(x) length(x), sig_firstclass_all);
     nClusters = cumsum(nClusters(:,1));
     nClusters = find(nClusters==nSubjectStudied);
     % nSubjectStudied = nSubj(1,var);
+    % nSubj(:,var) = sum(cellfun(@(x) length(x), sig_firstclass_all)); %nb of subjects for each modality
+    nSubj = cellfun(@(x) length(x), sig_firstclass_all);
+    nSubj = sum(nSubj(1:nClusters,:),1)';
+    nTime(var) = T*var_srate(var); % 50 min x 60 sec / min x 32 samp / sec %nb of times for each modality
+    data{var} = nan(nSubj(1,var), nTime(var),nPeriod); % will become physiological signals
 
     groupList{var} = zeros(nSubjectStudied, 1); % will become IDs
     
@@ -210,8 +211,7 @@ accuracy = zeros(1, length(vars));
 periodToLookAt = 1;
 periodToLookAt = periodStudied;
 
-tmpnSubj = nSubj;
-tmpnSubj = zeros(size(tmpnSubj));
+tmpnSubj = zeros(size(nSubj));
 tmpnSubj(periodToLookAt,:) = nSubj(periodToLookAt,:);
 nPeriod = length(periodToLookAt);
 
