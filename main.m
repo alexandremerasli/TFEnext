@@ -1,6 +1,6 @@
 readISC = true; % Keep it false to not overwrite current isc data
 infDiag = false;
-periodStudied = 1:2;
+periodStudied = 1:3;
 
 % vars = {'eda_all_classes', 'hr_all_classes'};
 % vars = {'hr_all_classes', 'eda_all_classes'};
