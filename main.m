@@ -1,16 +1,16 @@
 readISC = true; % Keep it false to not overwrite current isc data
 infDiag = false;
-periodStudied = 1;
+periodStudied = [2];
 
 % vars = {'eda_all_classes', 'hr_all_classes'};
 % vars = {'hr_all_classes', 'eda_all_classes'};
-vars = {'hr_all_classes'};
-% vars = {'eda_all_classes'};
+% vars = {'hr_all_classes'};
+vars = {'eda_all_classes'};
 
 % var_srate = [32, 1];
 % var_srate = [1,32]; 
-var_srate = [1];
-% var_srate = [32];
+% var_srate = [1];
+var_srate = [32];
 
 T = 50 * 60; % recording time [s]
 t0 = 5 * 60; % start time of analysis [s];
@@ -23,10 +23,9 @@ nPeriod = zeros(1, length(vars));
 for var = 1 : length(vars)
     path2file = fullfile(filepath, ['for_synchrony_', vars{var}]);
     load(path2file);
-    sig_firstclass_all = sig_firstclass_all(:,periodStudied);
-    nPeriod = size(sig_firstclass_all,2);
+    %sig_firstclass_all = sig_firstclass_all(:,periodStudied);
 end
-nSubj = zeros(nPeriod, length(vars));
+nSubj = zeros(size(sig_firstclass_all));
 nTime = zeros(1, length(vars));
 data = cell(1, length(vars));
 groupList = cell(1, length(vars));
@@ -36,33 +35,39 @@ for var = 1 : length(vars)
     path2file = fullfile(filepath, ['for_synchrony_', vars{var}]);
     load(path2file);
     sig_firstclass_all = sig_firstclass_all(:,periodStudied);
-    
+    nPeriod = length(periodStudied);
+
     % sort participants
     %[nPeriod,idx] = sort(sum(cellfun(@(x) length(x), sig_firstclass_all)>0,2),'descend');
     
     
     % compute number of subjects
-    if startsWith(vars{1},'eda')
-        nSubjectStudied = 12; % EDA
-    else
-        nSubjectStudied = 10; % HR
-    end
-    nClusters = cellfun(@(x) length(x), sig_firstclass_all);
-    nClusters = cumsum(nClusters(:,1));
-    nClusters = find(nClusters==nSubjectStudied);
+    
+    
+%     if startsWith(vars{1},'eda')
+%         nSubjectStudied = 12; % EDA
+%     else
+%         nSubjectStudied = 10; % HR
+%     end
+%     nClass = cellfun(@(x) length(x), sig_firstclass_all);
+%     nClass = cumsum(nClass(:,1));
+%     nClass = find(nClass==nSubjectStudied);
+
     % nSubjectStudied = nSubj(1,var);
-    % nSubj(:,var) = sum(cellfun(@(x) length(x), sig_firstclass_all)); %nb of subjects for each modality
-    nSubj = cellfun(@(x) length(x), sig_firstclass_all);
-    nSubj = sum(nSubj(1:nClusters,:),1)';
+    % nSubj(:,var) = sum(cellfun(@(x) length(x), sig_firstclass_all)); % nb of subjects for each modality
+    nSubj(:,periodStudied) = cellfun(@(x) length(x), sig_firstclass_all);
+    nClass = 3;
+    nSubj = sum(nSubj(1:nClass,:),1)';
+    nSubjectStudied = nSubj(periodStudied(1));
     nTime(var) = T*var_srate(var); % 50 min x 60 sec / min x 32 samp / sec %nb of times for each modality
-    data{var} = nan(nSubj(1,var), nTime(var),nPeriod); % will become physiological signals
+    data{var} = nan(nSubj(periodStudied(1),var), nTime(var),nPeriod); % will become physiological signals
 
     groupList{var} = zeros(nSubjectStudied, 1); % will become IDs
     
     % fill matrix 'data' with responses
     subj = 0;
     
-    for cl = 1 : nClusters
+    for cl = 1 : nClass
         for subj_in_cl = 1 : length(sig_firstclass_all{cl})
             subj = subj + 1;
             groupList{var}(subj) = cl;
@@ -90,7 +95,7 @@ if readISC % we can safely compute new ISC as it has been stored in CSV
         isc{var} = nan(nSubjectStudied, nSubjectStudied,nPeriod,nPeriod);
         for n1 = 1 : nSubjectStudied
             disp(n1/nSubjectStudied*100)
-            for period1 = 1 : nPeriod
+            for period1 = 1:nPeriod
                 period1
                 for period2 = period1 : nPeriod
                     if period2 == period1
@@ -222,7 +227,7 @@ nPeriod = length(periodToLookAt);
 for var = 1 : length(vars)
     %var
     isc_to_group{var} = zeros(sum(tmpnSubj(:,var)), 2);
-    for period = periodToLookAt
+    for period = 1:nPeriod
         %period
         for n1 = 1 : nSubjectStudied
             %n1
