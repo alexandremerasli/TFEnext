@@ -1,16 +1,16 @@
 readISC = true; % Keep it false to not overwrite current isc data
 infDiag = false;
-periodStudied = 1:2;
+periodStudied = 1;
 
 % vars = {'eda_all_classes', 'hr_all_classes'};
 % vars = {'hr_all_classes', 'eda_all_classes'};
-% vars = {'hr_all_classes'};
-vars = {'eda_all_classes'};
+vars = {'hr_all_classes'};
+% vars = {'eda_all_classes'};
 
 % var_srate = [32, 1];
 % var_srate = [1,32]; 
-% var_srate = [1];
-var_srate = [32];
+var_srate = [1];
+% var_srate = [32];
 
 T = 50 * 60; % recording time [s]
 t0 = 5 * 60; % start time of analysis [s];
@@ -42,7 +42,11 @@ for var = 1 : length(vars)
     
     
     % compute number of subjects
-    nSubjectStudied = 12;
+    if startsWith(vars{1},'eda')
+        nSubjectStudied = 12; % EDA
+    else
+        nSubjectStudied = 10; % HR
+    end
     nClusters = cellfun(@(x) length(x), sig_firstclass_all);
     nClusters = cumsum(nClusters(:,1));
     nClusters = find(nClusters==nSubjectStudied);
