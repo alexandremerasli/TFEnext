@@ -3,7 +3,8 @@ readISC = true; % Keep it false to not overwrite current isc data
 % parameters
 infDiag = false;
 studiedPeriods = [1];
-studiedClasses = [1,4];
+% studiedClasses = [1,2];
+studiedClasses = 1:17;
 
 % choose modality (do not run both for now, as different different labels, will produce errors
 % vars = {'eda_all_classes', 'hr_all_classes'};
@@ -132,41 +133,41 @@ if ~readISC % ISC has not been written yet, so we can do it.
     if infDiag
         if length(vars) == 2
             if startsWith(vars{1},'eda')
-                writematrix(isc{1},strcat('schoolInf_EDA',num2str(nStudiedSubjects),'.csv'));
-                writematrix(isc{2},strcat('schoolInf_IBI',num2str(nStudiedSubjects),'.csv'));
-                save(strcat('schoolInf_EDA_IBI',num2str(nStudiedSubjects),'.mat'),'isc');
+                writematrix(isc{1},strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
+                writematrix(isc{2},strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
+                save(strcat('schoolInf_EDA_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
             else
-                writematrix(isc{1},strcat('schoolInf_IBI',num2str(nStudiedSubjects),'.csv'));
-                writematrix(isc{2},strcat('schoolInf_EDA',num2str(nStudiedSubjects),'.csv'));
-                save(strcat('schoolInf_IBI_EDA',num2str(nStudiedSubjects),'.mat'),'isc');
+                writematrix(isc{1},strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
+                writematrix(isc{2},strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
+                save(strcat('schoolInf_IBI_EDA',num2str(studiedPeriods),'.mat'),'isc');
             end
         else
             if startsWith(vars{1},'eda')
-                writematrix(isc{1},strcat('schoolInf_EDA',num2str(nStudiedSubjects),'.csv'));
-                save(strcat('schoolInf_EDA',num2str(nStudiedSubjects),'.mat'),'isc');
+                writematrix(isc{1},strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
+                save(strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
             else
-                writematrix(isc{1},strcat('schoolInf_IBI',num2str(nStudiedSubjects),'.csv'));
-                save(strcat('schoolInf_IBI',num2str(nStudiedSubjects),'.mat'),'isc');
+                writematrix(isc{1},strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
+                save(strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
             end
         end
     else
         if length(vars) == 2
             if startsWith(vars{1},'eda')
-                writematrix(isc{1},strcat('school_EDA',num2str(nStudiedSubjects),'.csv'));
-                writematrix(isc{2},strcat('school_IBI',num2str(nStudiedSubjects),'.csv'));
-                save(strcat('school_EDA_IBI',num2str(nStudiedSubjects),'.mat'),'isc');
+                writematrix(isc{1},strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
+                writematrix(isc{2},strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
+                save(strcat('school_EDA_IBI',num2str(studiedPeriods),'.mat'),'_',num2str(studiedClasses),'isc');
             else
-                writematrix(isc{1},strcat('school_IBI',num2str(nStudiedSubjects),'.csv'));
-                writematrix(isc{2},strcat('school_EDA',num2str(nStudiedSubjects),'.csv'));
-                save(strcat('school_IBI_EDA',num2str(nStudiedSubjects),'.mat'),'isc');
+                writematrix(isc{1},strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
+                writematrix(isc{2},strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
+                save(strcat('school_IBI_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
             end
         else
             if startsWith(vars{1},'eda')
-                writematrix(isc{1},strcat('school_EDA',num2str(nStudiedSubjects),'.csv'));
-                save(strcat('school_EDA',num2str(nStudiedSubjects),'.mat'),'isc');
+                writematrix(isc{1},strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
+                save(strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
             else
-                writematrix(isc{1},strcat('school_IBI',num2str(nStudiedSubjects),'.csv'));
-                save(strcat('school_IBI',num2str(nStudiedSubjects),'.mat'),'isc');
+                writematrix(isc{1},strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
+                save(strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
             end
         end
     end
@@ -200,29 +201,29 @@ if readISC
     if infDiag
         if length(vars) == 2
             if startsWith(vars{1},'eda')
-                load(strcat('schoolInf_EDA_IBI',num2str(nStudiedSubjects),'.mat'),'isc');
+                load(strcat('schoolInf_EDA_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
             else
-                load(strcat('schoolInf_IBI_EDA',num2str(nStudiedSubjects),'.mat'),'isc');
+                load(strcat('schoolInf_IBI_EDA',num2str(studiedPeriods),'.mat'),'isc');
             end
         else
             if startsWith(vars{1},'eda')
-                load(strcat('schoolInf_EDA',num2str(nStudiedSubjects),'.mat'),'isc');
+                load(strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
             else
-                load(strcat('schoolInf_IBI',num2str(nStudiedSubjects),'.mat'),'isc');
+                load(strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
             end
         end
     else
         if length(vars) == 2
             if startsWith(vars{1},'eda')
-                load(strcat('school_EDA_IBI',num2str(nStudiedSubjects),'.mat'),'isc');
+                load(strcat('school_EDA_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
             else
-                load(strcat('school_IBI_EDA',num2str(nStudiedSubjects),'.mat'),'isc');
+                load(strcat('school_IBI_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
             end
         else
             if startsWith(vars{1},'eda')
-                load(strcat('school_EDA',num2str(nStudiedSubjects),'.mat'),'isc');
+                load(strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
             else
-                load(strcat('school_IBI',num2str(nStudiedSubjects),'.mat'),'isc');
+                load(strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
             end
         end
     end
@@ -234,9 +235,9 @@ isc_to_group = cell(1, length(vars));
 accuracy = zeros(1, length(vars));
 
 periodsToLookAt = 1;
-% periodsToLookAt = studiedPeriods;
-classesToLookAt = 1:2;
-%classesToLookAt = studiedClasses;
+periodsToLookAt = studiedPeriods;
+classesToLookAt = [1,4];
+% classesToLookAt = studiedClasses;
 
 tmpnSubj = zeros(size(nSubj));
 tmpnSubj(classesToLookAt,periodsToLookAt) = nSubj(classesToLookAt,periodsToLookAt);
@@ -307,3 +308,75 @@ for var = 1 : length(vars)
     diffWithoutNans = diffWithoutNans(~isnan(diffWithoutNans));
     accuracy(var) = sum(diffWithoutNans<0) / length(diffWithoutNans);
 end
+
+%% 
+
+%% COMPUTE SYNCHRONY WITH OWN GROUP AND OTHER GROUP
+
+nClasses = 2;
+allClasses = nchoosek(1:17,nClasses);
+% for i=2:length(studiedClasses)
+for i=1:length(allClasses)
+    % pre-assignement / parameters
+    isc_to_group = cell(1, length(vars));
+    accuracy = zeros(1, length(vars));
+
+    periodsToLookAt = 1;
+    % classesToLookAt = 1:i;
+    classesToLookAt = allClasses(i,:);
+    tmpnSubj = zeros(size(nSubj));
+    tmpnSubj(classesToLookAt,periodsToLookAt) = nSubj(classesToLookAt,periodsToLookAt);
+    nPeriod = length(periodsToLookAt);
+    nClass = length(classesToLookAt);
+    symIsc = cell(1, length(vars));
+    groupListStudied = cell(1, length(vars));
+    for var = 1 : length(vars)
+        %var
+        groupListStudied{var} = groupList{var}(find(sum(groupList{var}==classesToLookAt,2)));
+
+        symIsc{var} = isc{var};
+        symIsc{var}(isnan(symIsc{var})) = 1j;
+        symIsc{var} = (symIsc{var}+permute(symIsc{var},[2 1 3 4]))/2;    
+        NaNsLocation = imag(symIsc{var});
+        symIsc{var} = real(symIsc{var});
+        symIsc{var}(NaNsLocation==0) = nan;
+        symIsc{var} = isc{var};
+
+    %     if infDiag
+    %         symIsc{var}(find(eye(size(symIsc{var})))) = Inf;
+    %     else
+    %         symIsc{var}(find(eye(size(symIsc{var})))) = 1;
+    %     end
+        subj = 0;
+        isc_to_group{var} = zeros(nStudiedSubjects*nPeriod, 2);
+        for periodIdx = 1:nPeriod
+            period = periodsToLookAt(periodIdx);
+            %period
+            for n1 = 1 : sum(tmpnSubj(classesToLookAt,period))
+                subj = subj + 1;
+                a = subj
+                % own group
+                if find(groupListStudied{var} == groupListStudied{var}(n1)) == n1
+                    isc_to_group{var}(subj,1) = 1;
+                else
+                    isc_to_group{var}(subj,1) = nanmean(symIsc{var}(n1, setdiff(find(groupListStudied{var} == groupListStudied{var}(n1)), n1), periodIdx, periodIdx)); % ISC within group
+                end
+                % other group
+                if (length(periodsToLookAt) > 1)
+                    isc_to_group{var}(subj,2) = nanmean(symIsc{var}(n1, groupListStudied{var} ~= groupListStudied{var}(n1),setdiff(1:nPeriod, periodIdx),setdiff(1:nPeriod, periodIdx))','all'); % ISC between groups
+                else
+                    isc_to_group{var}(subj,2) = nanmean(symIsc{var}(n1, groupListStudied{var} ~= groupListStudied{var}(n1)),'all'); % ISC between groups
+                end
+            end
+        end
+
+        diffWithoutNans = diff(isc_to_group{var}(1 : sum(tmpnSubj(classesToLookAt,periodsToLookAt),'all'),:),1,2);
+        diffWithoutNans = diffWithoutNans(~isnan(diffWithoutNans));
+        accuracy(var) = sum(diffWithoutNans<0) / length(diffWithoutNans);
+        acc(i,var) = accuracy(var);
+    end
+end
+
+%%
+figure;
+plot(acc);
