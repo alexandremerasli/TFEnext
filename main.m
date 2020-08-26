@@ -1,18 +1,19 @@
-readISC = true; % Keep it false to not overwrite current isc data
+readISC = true; % keep it false to not overwrite current isc data
 
 % parameters
-infDiag = false;
-studiedPeriods = [1];
-% studiedClasses = [1,2];
-studiedClasses = 1:17;
+infDiag = false; % normal synchrony computation or averaging (to avoid inf)
+studiedPeriods = [2];
+studiedClasses = [1,4,5];
+%studiedClasses = 1:17;
 
-% choose modality (do not run both for now, as different different labels, will produce errors
+% choose modality (do not run both for now, as different labels, will
+% produce errors)
 % vars = {'eda_all_classes', 'hr_all_classes'};
 % vars = {'hr_all_classes', 'eda_all_classes'};
 % vars = {'hr_all_classes'};
 vars = {'eda_all_classes'};
 
-% signal information
+% signal information according to chosen modalities
 if length(vars) == 2
     if startsWith(vars{1},'eda')
         var_srate = [32,1];
@@ -35,8 +36,8 @@ filepath = './data';
 
 % pre-assign variables for faster processing
 nTime = zeros(1, length(vars));
-data = cell(1, length(vars));
-groupList = cell(1, length(vars));
+data = cell(1, length(vars)); % physiological signals
+groupList = cell(1, length(vars)); % IDs
 
 % fill data matrix
 for var = 1 : length(vars)
@@ -45,44 +46,36 @@ for var = 1 : length(vars)
     load(path2file);
     
     % load studied data
-    sig_firstclass_all_studied = sig_firstclass_all(studiedClasses,studiedPeriods);
+    sig_all_studied = sig_firstclass_all(studiedClasses,studiedPeriods);
 
     % compute number of classes and subjects
-    nSubj = cellfun(@(x) length(x), sig_firstclass_all);
+    nSubj = cellfun(@(x) length(x), sig_firstclass_all); % number of subjects for each class and each period
     nClass = length(studiedClasses);
-    nStudiedSubjects = max(sum(nSubj(studiedClasses,studiedPeriods),1));
+    nStudiedSubjects = max(sum(nSubj(studiedClasses,studiedPeriods),1)); % number of studied subjects according to chosen classes and periods
     
     % pre-assign variables for faster processing
     nTime(var) = T*var_srate(var); % 50 min x 60 sec / min x 32 samp / sec %nb of times for each modality
     nPeriod = length(studiedPeriods);
-    data{var} = nan(nStudiedSubjects, nTime(var),nPeriod); % will become physiological signals
-    groupList{var} = zeros(nStudiedSubjects, 1); % will become IDs
+    data{var} = nan(nStudiedSubjects, nTime(var),nPeriod); % will become physiological signals for each chosen modality
+    groupList{var} = zeros(nStudiedSubjects, 1); % will become IDs for each chosen modality
     
     % fill matrix 'data' with responses
     subj = 0;
     for cl = 1 : nClass
-        for subj_in_cl = 1 : length(sig_firstclass_all{cl})
+        for subj_in_cl = 1 : length(sig_firstclass_all{studiedClasses(cl)})
             subj = subj + 1;
-            groupList{var}(subj) = cl;
+            groupList{var}(subj) = studiedClasses(cl);
             for period=1:nPeriod
-                if isempty(sig_firstclass_all_studied{cl,period})
+                if isempty(sig_all_studied{cl,period})
                     continue
-                elseif length(sig_firstclass_all_studied{cl,period}{subj_in_cl}) ~= nTime(var) % skip data with different number of times
+                elseif length(sig_all_studied{cl,period}{subj_in_cl}) ~= nTime(var) % skip data with different number of times
                     continue
                 else
-                    data{var}(subj, :,period) = sig_firstclass_all_studied{cl,period}{subj_in_cl}; % fill data
+                    data{var}(subj, :,period) = sig_all_studied{cl,period}{subj_in_cl}; % fill data
                 end
             end
         end 
     end
-
-%     subj = 0;
-%     for cl = 1 : length(sig_firstclass_all)
-%         for subj_in_cl = 1 : length(sig_firstclass_all{cl})
-%             subj = subj + 1;
-%             groupList{var}(subj) = cl;
-%         end
-%     end
 end
 
 %% COMPUTE PHYSIOLOGICAL SYNCHRONY
@@ -94,9 +87,9 @@ if readISC % we can safely compute new ISC as it has been stored in CSV
     for var = 1 : length(vars)
         isc{var} = nan(nStudiedSubjects, nStudiedSubjects,nPeriod,nPeriod);
         for n1 = 1 : nStudiedSubjects
-            disp(n1/nStudiedSubjects*100)
+            disp(n1/nStudiedSubjects*100); % percentage of done computation
             for period1 = 1:nPeriod
-                period1
+                disp(period1); % can be removed
                 for period2 = period1 : nPeriod
                     if period2 == period1
                         bound = n1;
@@ -104,7 +97,6 @@ if readISC % we can safely compute new ISC as it has been stored in CSV
                         bound = 1;
                     end
                     for n2 = bound : nStudiedSubjects
-                    % disp(n2)
                         % present data in a struct input needed for 'ps_mwa'
                         dat_subj_1.data = data{var}(n1,t0*var_srate(var)+1:t1*var_srate(var),period1);
                         dat_subj_1.samplerate = var_srate(var);
@@ -123,13 +115,13 @@ if readISC % we can safely compute new ISC as it has been stored in CSV
                         end
                     end
                 end
-            end
-            
+            end 
         end
     end
 end
 %% WRITE SYNCHRONY MATRIX IN CSV
-if ~readISC % ISC has not been written yet, so we can do it. 
+if ~readISC % ISC has not been written yet, so we can do it according to 
+            % chosen modalities and the way of computing synchrony. 
     if infDiag
         if length(vars) == 2
             if startsWith(vars{1},'eda')
@@ -178,7 +170,7 @@ end
 readISC = true;
 
 %% WRITE TRUE GROUPS in CSV
-if nClass == 17 % write only if every classes selected to match Python then
+if nClass == 17 % write only if every classes are selected to match with Python then
     if length(vars) == 2
         if startsWith(vars{1},'eda')
             writematrix(groupList{1},'conditionSchool_EDA.csv');
@@ -197,7 +189,9 @@ if nClass == 17 % write only if every classes selected to match Python then
 end
 
 %% READ SYNCHRONY MATRIX IN CSV 
-if readISC
+if readISC % we can overwrite isc matrix if user authorized it, or overwrite 
+           % by previously computed matrix according to chosen modalities 
+           % and the way of computing synchrony
     if infDiag
         if length(vars) == 2
             if startsWith(vars{1},'eda')
@@ -234,10 +228,13 @@ end
 isc_to_group = cell(1, length(vars));
 accuracy = zeros(1, length(vars));
 
-periodsToLookAt = 1;
+% periodsToLookAt = 1;
 periodsToLookAt = studiedPeriods;
-classesToLookAt = [1,4];
-% classesToLookAt = studiedClasses;
+% classesToLookAt = [1,2,4,5,17];
+classesToLookAt = studiedClasses;
+classesToLookAt = [1,4,5];
+
+
 
 tmpnSubj = zeros(size(nSubj));
 tmpnSubj(classesToLookAt,periodsToLookAt) = nSubj(classesToLookAt,periodsToLookAt);
@@ -245,10 +242,17 @@ nPeriod = length(periodsToLookAt);
 nClass = length(classesToLookAt);
 symIsc = cell(1, length(vars));
 groupListStudied = cell(1, length(vars));
+
 for var = 1 : length(vars)
     %var
     groupListStudied{var} = groupList{var}(find(sum(groupList{var}==classesToLookAt,2)));
     
+%     for i=1:length(classesToLookAt)
+%         classesToLookAt(i) = find(studiedClasses==classesToLookAt(i));
+%     end
+%     for i=1:length(periodsToLookAt)
+%         periodsToLookAt(i) = find(studiedPeriods==periodsToLookAt(i));
+%     end
     
     symIsc{var} = isc{var};
     symIsc{var}(isnan(symIsc{var})) = 1j;
@@ -258,19 +262,12 @@ for var = 1 : length(vars)
     symIsc{var}(NaNsLocation==0) = nan;
     symIsc{var} = isc{var};
     
-%     if infDiag
-%         symIsc{var}(find(eye(size(symIsc{var})))) = Inf;
-%     else
-%         symIsc{var}(find(eye(size(symIsc{var})))) = 1;
-%     end
     subj = 0;
     isc_to_group{var} = zeros(nStudiedSubjects*nPeriod, 2);
     for periodIdx = 1:nPeriod
         period = periodsToLookAt(periodIdx);
-        %period
         for n1 = 1 : sum(tmpnSubj(classesToLookAt,period))
             subj = subj + 1;
-            a = subj
             % own group
             if find(groupListStudied{var} == groupListStudied{var}(n1)) == n1
                 isc_to_group{var}(subj,1) = 1;
@@ -304,79 +301,76 @@ for var = 1 : length(vars)
                             'MarkerEdgeColor', color{(diff(isc_to_group{var}(n1,:))>0) +1}, ...
                             'MarkerSize', 15);
     end
-    diffWithoutNans = diff(isc_to_group{var}(1 : sum(tmpnSubj(classesToLookAt,periodsToLookAt),'all'),:),1,2);
-    diffWithoutNans = diffWithoutNans(~isnan(diffWithoutNans));
+    
+    % compute accuracy
+    diffWithoutNans = diff(isc_to_group{var}(1 : sum(tmpnSubj(classesToLookAt,periodsToLookAt),'all'),:),1,2); % remove zeros (not studied groups)
+    diffWithoutNans = diffWithoutNans(~isnan(diffWithoutNans)); % remove NaNs
     accuracy(var) = sum(diffWithoutNans<0) / length(diffWithoutNans);
 end
 
-%% 
+%% COMPUTE SYNCHRONY WITH OWN GROUP AND OTHER GROUP FOR EACH 2-CLASSES COMBINATION
 
-%% COMPUTE SYNCHRONY WITH OWN GROUP AND OTHER GROUP
+if length(studiedClasses) == 17
+    nClassesCombination = 2;
+    allClasses = nchoosek(1:17,nClassesCombination); % all nClassesCombination permutations
+    for i=1:length(allClasses)
+        % pre-assignement / parameters
+        isc_to_group = cell(1, length(vars));
+        accuracy = zeros(1, length(vars));
 
-nClasses = 2;
-allClasses = nchoosek(1:17,nClasses);
-% for i=2:length(studiedClasses)
-for i=1:length(allClasses)
-    % pre-assignement / parameters
-    isc_to_group = cell(1, length(vars));
-    accuracy = zeros(1, length(vars));
+        periodsToLookAt = 1;
+        classesToLookAt = allClasses(i,:);
+        tmpnSubj = zeros(size(nSubj));
+        tmpnSubj(classesToLookAt,periodsToLookAt) = nSubj(classesToLookAt,periodsToLookAt);
+        nPeriod = length(periodsToLookAt);
+        nClass = length(classesToLookAt);
+        symIsc = cell(1, length(vars));
+        groupListStudied = cell(1, length(vars));
+        for var = 1 : length(vars)
+            %var
+            groupListStudied{var} = groupList{var}(find(sum(groupList{var}==classesToLookAt,2)));
 
-    periodsToLookAt = 1;
-    % classesToLookAt = 1:i;
-    classesToLookAt = allClasses(i,:);
-    tmpnSubj = zeros(size(nSubj));
-    tmpnSubj(classesToLookAt,periodsToLookAt) = nSubj(classesToLookAt,periodsToLookAt);
-    nPeriod = length(periodsToLookAt);
-    nClass = length(classesToLookAt);
-    symIsc = cell(1, length(vars));
-    groupListStudied = cell(1, length(vars));
-    for var = 1 : length(vars)
-        %var
-        groupListStudied{var} = groupList{var}(find(sum(groupList{var}==classesToLookAt,2)));
+            symIsc{var} = isc{var};
+            symIsc{var}(isnan(symIsc{var})) = 1j;
+            symIsc{var} = (symIsc{var}+permute(symIsc{var},[2 1 3 4]))/2;    
+            NaNsLocation = imag(symIsc{var});
+            symIsc{var} = real(symIsc{var});
+            symIsc{var}(NaNsLocation==0) = nan;
+            symIsc{var} = isc{var};
 
-        symIsc{var} = isc{var};
-        symIsc{var}(isnan(symIsc{var})) = 1j;
-        symIsc{var} = (symIsc{var}+permute(symIsc{var},[2 1 3 4]))/2;    
-        NaNsLocation = imag(symIsc{var});
-        symIsc{var} = real(symIsc{var});
-        symIsc{var}(NaNsLocation==0) = nan;
-        symIsc{var} = isc{var};
+            subj = 0;
+            isc_to_group{var} = zeros(nStudiedSubjects*nPeriod, 2);
+            for periodIdx = 1:nPeriod
+                period = periodsToLookAt(periodIdx);
+                for n1 = 1 : sum(tmpnSubj(classesToLookAt,period))
+                    subj = subj + 1;
 
-    %     if infDiag
-    %         symIsc{var}(find(eye(size(symIsc{var})))) = Inf;
-    %     else
-    %         symIsc{var}(find(eye(size(symIsc{var})))) = 1;
-    %     end
-        subj = 0;
-        isc_to_group{var} = zeros(nStudiedSubjects*nPeriod, 2);
-        for periodIdx = 1:nPeriod
-            period = periodsToLookAt(periodIdx);
-            %period
-            for n1 = 1 : sum(tmpnSubj(classesToLookAt,period))
-                subj = subj + 1;
-                a = subj
-                % own group
-                if find(groupListStudied{var} == groupListStudied{var}(n1)) == n1
-                    isc_to_group{var}(subj,1) = 1;
-                else
-                    isc_to_group{var}(subj,1) = nanmean(symIsc{var}(n1, setdiff(find(groupListStudied{var} == groupListStudied{var}(n1)), n1), periodIdx, periodIdx)); % ISC within group
-                end
-                % other group
-                if (length(periodsToLookAt) > 1)
-                    isc_to_group{var}(subj,2) = nanmean(symIsc{var}(n1, groupListStudied{var} ~= groupListStudied{var}(n1),setdiff(1:nPeriod, periodIdx),setdiff(1:nPeriod, periodIdx))','all'); % ISC between groups
-                else
-                    isc_to_group{var}(subj,2) = nanmean(symIsc{var}(n1, groupListStudied{var} ~= groupListStudied{var}(n1)),'all'); % ISC between groups
+                    % own group
+                    if find(groupListStudied{var} == groupListStudied{var}(n1)) == n1
+                        isc_to_group{var}(subj,1) = 1;
+                    else
+                        isc_to_group{var}(subj,1) = nanmean(symIsc{var}(n1, setdiff(find(groupListStudied{var} == groupListStudied{var}(n1)), n1), periodIdx, periodIdx)); % ISC within group
+                    end
+                    % other group
+                    if (length(periodsToLookAt) > 1)
+                        isc_to_group{var}(subj,2) = nanmean(symIsc{var}(n1, groupListStudied{var} ~= groupListStudied{var}(n1),setdiff(1:nPeriod, periodIdx),setdiff(1:nPeriod, periodIdx))','all'); % ISC between groups
+                    else
+                        isc_to_group{var}(subj,2) = nanmean(symIsc{var}(n1, groupListStudied{var} ~= groupListStudied{var}(n1)),'all'); % ISC between groups
+                    end
                 end
             end
-        end
 
-        diffWithoutNans = diff(isc_to_group{var}(1 : sum(tmpnSubj(classesToLookAt,periodsToLookAt),'all'),:),1,2);
-        diffWithoutNans = diffWithoutNans(~isnan(diffWithoutNans));
-        accuracy(var) = sum(diffWithoutNans<0) / length(diffWithoutNans);
-        acc(i,var) = accuracy(var);
+            % compute accuracy
+            diffWithoutNans = diff(isc_to_group{var}(1 : sum(tmpnSubj(classesToLookAt,periodsToLookAt),'all'),:),1,2); % remove zeros (not studied groups)
+            diffWithoutNans = diffWithoutNans(~isnan(diffWithoutNans)); % remove NaNs
+            accuracy(var) = sum(diffWithoutNans<0) / length(diffWithoutNans);
+            acc(i,var) = accuracy(var);
+        end
     end
 end
 
 %%
-figure;
-plot(acc);
+if length(studiedClasses) == 17
+    figure;
+    plot(acc);
+end
