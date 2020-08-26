@@ -2,9 +2,9 @@ readISC = true; % keep it false to not overwrite current isc data
 
 % parameters
 infDiag = false; % normal synchrony computation or averaging (to avoid inf)
-studiedPeriods = [2];
-studiedClasses = [1,4,5];
-%studiedClasses = 1:17;
+studiedPeriods = [1,2,3,4,5,6,7];
+studiedClasses = [1,4];
+% studiedClasses = 1:4;
 
 % choose modality (do not run both for now, as different labels, will
 % produce errors)
@@ -169,6 +169,8 @@ end
 % or use the previously computed one.
 readISC = true;
 
+%%
+iscPrevious = isc;
 %% WRITE TRUE GROUPS in CSV
 if nClass == 17 % write only if every classes are selected to match with Python then
     if length(vars) == 2
@@ -228,23 +230,20 @@ end
 isc_to_group = cell(1, length(vars));
 accuracy = zeros(1, length(vars));
 
-% periodsToLookAt = 1;
-periodsToLookAt = studiedPeriods;
+% periodsToLookAt = 1; % it is possible to select a subset of studied periods
+periodsToLookAt = studiedPeriods(4);
 % classesToLookAt = [1,2,4,5,17];
 classesToLookAt = studiedClasses;
-classesToLookAt = [1,4,5];
+% classesToLookAt = [1,4]; % it is possible to select a subset of studied classes
 
-
-
-tmpnSubj = zeros(size(nSubj));
+tmpnSubj = zeros(size(nSubj)); % number of subjects for each class and each period (can be different from nSubj if classesToLookAt != studiedClasses or periodsToLookAt != studiedPeriods) 
 tmpnSubj(classesToLookAt,periodsToLookAt) = nSubj(classesToLookAt,periodsToLookAt);
 nPeriod = length(periodsToLookAt);
 nClass = length(classesToLookAt);
-symIsc = cell(1, length(vars));
-groupListStudied = cell(1, length(vars));
+symIsc = cell(1, length(vars)); % make isc symmetrical to well compute isc_to_group
+groupListStudied = cell(1, length(vars)); % ground truth for selected classes
 
 for var = 1 : length(vars)
-    %var
     groupListStudied{var} = groupList{var}(find(sum(groupList{var}==classesToLookAt,2)));
     
 %     for i=1:length(classesToLookAt)
@@ -254,6 +253,7 @@ for var = 1 : length(vars)
 %         periodsToLookAt(i) = find(studiedPeriods==periodsToLookAt(i));
 %     end
     
+    % make isc symmetrical (use a trick to remove NaNs) to well compute isc_to_group
     symIsc{var} = isc{var};
     symIsc{var}(isnan(symIsc{var})) = 1j;
     symIsc{var} = (symIsc{var}+permute(symIsc{var},[2 1 3 4]))/2;    
@@ -264,8 +264,9 @@ for var = 1 : length(vars)
     
     subj = 0;
     isc_to_group{var} = zeros(nStudiedSubjects*nPeriod, 2);
-    for periodIdx = 1:nPeriod
-        period = periodsToLookAt(periodIdx);
+    for i = 1:nPeriod
+        period = periodsToLookAt(i); % studied period
+        periodIdx = find(studiedPeriods==periodsToLookAt); % period index in isc
         for n1 = 1 : sum(tmpnSubj(classesToLookAt,period))
             subj = subj + 1;
             % own group
@@ -276,7 +277,7 @@ for var = 1 : length(vars)
             end
             % other group
             if (length(periodsToLookAt) > 1)
-                isc_to_group{var}(subj,2) = nanmean(symIsc{var}(n1, groupListStudied{var} ~= groupListStudied{var}(n1),setdiff(1:nPeriod, periodIdx),setdiff(1:nPeriod, periodIdx))','all'); % ISC between groups
+                isc_to_group{var}(subj,2) = nanmean(symIsc{var}(n1, groupListStudied{var} ~= groupListStudied{var}(n1),setdiff(1:nPeriod, periodIdx),setdiff(1:nPeriod, periodIdx)),'all'); % ISC between groups
             else
                 isc_to_group{var}(subj,2) = nanmean(symIsc{var}(n1, groupListStudied{var} ~= groupListStudied{var}(n1)),'all'); % ISC between groups
             end
@@ -318,7 +319,7 @@ if length(studiedClasses) == 17
         isc_to_group = cell(1, length(vars));
         accuracy = zeros(1, length(vars));
 
-        periodsToLookAt = 1;
+        periodsToLookAt = studiedPeriods(1); % Look at only one period
         classesToLookAt = allClasses(i,:);
         tmpnSubj = zeros(size(nSubj));
         tmpnSubj(classesToLookAt,periodsToLookAt) = nSubj(classesToLookAt,periodsToLookAt);
@@ -327,9 +328,16 @@ if length(studiedClasses) == 17
         symIsc = cell(1, length(vars));
         groupListStudied = cell(1, length(vars));
         for var = 1 : length(vars)
-            %var
             groupListStudied{var} = groupList{var}(find(sum(groupList{var}==classesToLookAt,2)));
+    
+        %     for i=1:length(classesToLookAt)
+        %         classesToLookAt(i) = find(studiedClasses==classesToLookAt(i));
+        %     end
+        %     for i=1:length(periodsToLookAt)
+        %         periodsToLookAt(i) = find(studiedPeriods==periodsToLookAt(i));
+        %     end
 
+            % make isc symmetrical (use a trick to remove NaNs) to well compute isc_to_group
             symIsc{var} = isc{var};
             symIsc{var}(isnan(symIsc{var})) = 1j;
             symIsc{var} = (symIsc{var}+permute(symIsc{var},[2 1 3 4]))/2;    
@@ -344,7 +352,6 @@ if length(studiedClasses) == 17
                 period = periodsToLookAt(periodIdx);
                 for n1 = 1 : sum(tmpnSubj(classesToLookAt,period))
                     subj = subj + 1;
-
                     % own group
                     if find(groupListStudied{var} == groupListStudied{var}(n1)) == n1
                         isc_to_group{var}(subj,1) = 1;
@@ -353,7 +360,7 @@ if length(studiedClasses) == 17
                     end
                     % other group
                     if (length(periodsToLookAt) > 1)
-                        isc_to_group{var}(subj,2) = nanmean(symIsc{var}(n1, groupListStudied{var} ~= groupListStudied{var}(n1),setdiff(1:nPeriod, periodIdx),setdiff(1:nPeriod, periodIdx))','all'); % ISC between groups
+                        isc_to_group{var}(subj,2) = nanmean(symIsc{var}(n1, groupListStudied{var} ~= groupListStudied{var}(n1),setdiff(1:nPeriod, periodIdx),setdiff(1:nPeriod, periodIdx)),'all'); % ISC between groups
                     else
                         isc_to_group{var}(subj,2) = nanmean(symIsc{var}(n1, groupListStudied{var} ~= groupListStudied{var}(n1)),'all'); % ISC between groups
                     end
