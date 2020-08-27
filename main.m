@@ -2,30 +2,33 @@ readISC = true; % keep it false to not overwrite current isc data
 
 % parameters
 infDiagModes = [false]; % normal synchrony computation or averaging (to avoid inf)
-% studiedPeriods = [2];
+studiedPeriods = [1,2];
 studiedPeriods = 1:7;
 % studiedClasses = [1,4];
 studiedClasses = 1:17;
-
-% choose modality (do not run both for now, as different labels, will
-% produce errors)
 % vars = {'eda_all_classes', 'hr_all_classes'};
 % vars = {'hr_all_classes', 'eda_all_classes'};
 % vars = {'hr_all_classes'};
 vars = {'eda_all_classes'};
+% downsample_eda = 1;
+downsample_eda = 8;
+downsample_hr = 1;
 
 % signal information according to chosen modalities
+eda_freq = 32 / downsample_eda;
+hr_freq = 1 / downsample_hr;
+
 if length(vars) == 2
     if startsWith(vars{1},'eda')
-        var_srate = [32,1];
+        var_srate = [eda_freq,hr_freq];
     else
-        var_srate = [1,32];
+        var_srate = [hr_freq,eda_freq];
     end
 else
     if startsWith(vars{1},'eda')
-        var_srate = [32];
+        var_srate = [eda_freq];
     else
-        var_srate = [1];
+        var_srate = [hr_freq];
     end
 end
 
@@ -64,6 +67,13 @@ for var = 1 : length(vars)
     data{var} = nan(nStudiedSubjects(var), nTime(var),nPeriod); % will become physiological signals for each chosen modality
     groupList{var} = zeros(nStudiedSubjects(var), 1); % will become IDs for each chosen modality
     
+    % downsampling factor
+    if startsWith(vars(var),'eda')
+        downsample_var = downsample_eda;
+    else
+        downsample_var = downsample_hr;
+    end
+    
     % fill matrix 'data' with responses
     subj = 0;
     for cl = 1 : nClass
@@ -73,10 +83,13 @@ for var = 1 : length(vars)
             for period=1:nPeriod
                 if isempty(sig_all_studied{cl,period})
                     continue
-                elseif length(sig_all_studied{cl,period}{subj_in_cl}) ~= nTime(var) % skip data with different number of times
-                    continue
                 else
-                    data{var}(subj, :,period) = sig_all_studied{cl,period}{subj_in_cl}; % fill data
+                    sig = downsample(sig_all_studied{cl,period}{subj_in_cl},downsample_var);
+                    if length(sig) ~= nTime(var) % skip data with different number of times
+                        continue
+                    else
+                        data{var}(subj, :,period) = sig; % fill data
+                    end
                 end
             end
         end 
@@ -164,7 +177,7 @@ if ~readISC % ISC has not been written yet, so we can do it according to
                 if startsWith(vars{1},'eda')
                     writematrix(isc{1},strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
                     writematrix(isc{2},strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('school_EDA_IBI',num2str(studiedPeriods),'.mat'),'_',num2str(studiedClasses),'isc');
+                    save(strcat('school_EDA_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
                 else
                     writematrix(isc{1},strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
                     writematrix(isc{2},strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
