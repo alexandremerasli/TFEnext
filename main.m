@@ -84,11 +84,15 @@ for var = 1 : length(vars)
                 if isempty(sig_all_studied{cl,period})
                     continue
                 else
-                    sig = downsample(sig_all_studied{cl,period}{subj_in_cl},downsample_var);
-                    if length(sig) ~= nTime(var) % skip data with different number of times
+                    if isempty(sig_all_studied{cl,period}{subj_in_cl})
                         continue
                     else
-                        data{var}(subj, :,period) = sig; % fill data
+                        sig = downsample(sig_all_studied{cl,period}{subj_in_cl},downsample_var);
+                        if length(sig) ~= nTime(var) % skip data with different number of times
+                            continue
+                        else
+                            data{var}(subj, :,period) = sig; % fill data
+                        end
                     end
                 end
             end
