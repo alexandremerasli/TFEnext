@@ -5,8 +5,8 @@ readISC = true; % keep it false to not overwrite current isc data
 
 % parameters
 infDiagModes = [false]; % normal synchrony computation or averaging (to avoid inf)
-studiedPeriods = [1,2,3];
-% studiedPeriods = 1:7;
+% studiedPeriods = [1,2,3];
+studiedPeriods = 1:7;
 studiedClasses = [1];
 % studiedClasses = 1:17;
 % vars = {'eda_all_classes', 'hr_all_classes'};
@@ -95,8 +95,8 @@ end
 
 infDiagModes = false;
 vars = {'eda_all_classes'};
-studiedPeriods = 1:3;
-studiedClasses = [1];
+studiedPeriods = 1:7;
+studiedClasses = studiedClasses(1);
 
 if readISC % we can overwrite isc matrix if user authorized it, or overwrite 
            % by previously computed matrix according to chosen modalities 
@@ -106,7 +106,7 @@ end
 
 classesToLookAt = studiedClasses;
 nPeriodsCombination = 2;
-allPeriods = nchoosek(studiedPeriods,nPeriodsCombination); % all nPeriodsCombination-periods permutations
+allPeriods = nchoosek(1:6,nPeriodsCombination); % all nPeriodsCombination-periods permutations
 accPeriods = zeros(length(allPeriods), length(vars)*length(infDiagModes));
 nComputation = 0; % counter just for indexing
 
@@ -121,7 +121,20 @@ for var = 1 : length(vars)
 end
 
 %% PLOT ACCURACY FOR EACH COMBINATION OF PERIODS
-if length(studiedPeriods) == 3
+n = length(studiedPeriods);
+if n == 7
+    n = 6;
     figure;
-    plot(accPeriods);
+    legends = string(zeros(1,n-1));
+    for i = 1:n-2
+        hold on;
+        plot(i+1:n,accPeriods(((i-1)*n - i*(i-1)/2 + 1):(i*n - i*(i+1)/2)),'LineWidth',2);
+        legends(i) = strcat("period ",num2str(i));
+    end
+    i = n - 1;
+    scatter(i+1:n,accPeriods(((i-1)*n - i*(i-1)/2 + 1):(i*n - i*(i+1)/2)),'LineWidth',2,'Marker','x');
+    legends(i) = strcat("period ",num2str(i));
+    legend(legends);
+    xlabel('other period');
+    ylabel('accuracy');
 end
