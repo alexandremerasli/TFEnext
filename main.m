@@ -1,3 +1,6 @@
+addpath('signalFunctions/')
+addpath('usefulFunctions/')
+
 readISC = true; % keep it false to not overwrite current isc data
 
 % parameters
