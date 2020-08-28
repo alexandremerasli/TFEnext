@@ -1,4 +1,4 @@
-function readSynchrony(infDiagModes,vars,studiedPeriods,studiedClasses)
+function isc = readSynchrony(infDiagModes,vars,studiedPeriods,studiedClasses)
     if length(infDiagModes) == 1
         if infDiagModes
             if length(vars) == 2

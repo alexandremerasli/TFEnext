@@ -58,7 +58,7 @@ function [isc_to_group,accuracy] = computeIscToGroup(isc,groupList,nSubj,nStudie
                     end
                     % other group
                     if (length(periodsToLookAt) > 1)
-                        isc_to_group{nComputation}(subj,2) = nanmean(symIsc{nComputation}(n1, groupListStudied{var} ~= groupListStudied{var}(n1),setdiff(1:nPeriod, periodIdx),setdiff(1:nPeriod, periodIdx)),'all'); % ISC between groups
+                        isc_to_group{nComputation}(subj,2) = nanmean([symIsc{nComputation}(n1, groupListStudied{var} ~= groupListStudied{var}(n1),setdiff(1:nPeriod, periodIdx),setdiff(1:nPeriod, periodIdx)) symIsc{nComputation}(n1, setdiff(find(groupListStudied{var} == groupListStudied{var}(n1)), n1), setdiff(1:nPeriod, periodIdx),setdiff(1:nPeriod, periodIdx))],'all'); % ISC between groups
                     else
                         isc_to_group{nComputation}(subj,2) = nanmean(symIsc{nComputation}(n1, groupListStudied{var} ~= groupListStudied{var}(n1),periodIdx,periodIdx),'all'); % ISC between groups
                     end

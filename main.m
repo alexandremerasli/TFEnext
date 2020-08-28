@@ -3,8 +3,8 @@ readISC = true; % keep it false to not overwrite current isc data
 % parameters
 infDiagModes = [false]; % normal synchrony computation or averaging (to avoid inf)
 studiedPeriods = [1,2,3];
-studiedPeriods = 1:7;
-studiedClasses = [1,4];
+% studiedPeriods = 1:7;
+studiedClasses = [1];
 % studiedClasses = 1:17;
 % vars = {'eda_all_classes', 'hr_all_classes'};
 % vars = {'hr_all_classes', 'eda_all_classes'};
@@ -14,138 +14,14 @@ vars = {'eda_all_classes'};
 downsample_eda = 8;
 downsample_hr = 1;
 
-% signal information according to chosen modalities
-eda_freq = 32 / downsample_eda;
-hr_freq = 1 / downsample_hr;
-
-if length(vars) == 2
-    if startsWith(vars{1},'eda')
-        var_srate = [eda_freq,hr_freq];
-    else
-        var_srate = [hr_freq,eda_freq];
-    end
-else
-    if startsWith(vars{1},'eda')
-        var_srate = [eda_freq];
-    else
-        var_srate = [hr_freq];
-    end
-end
-
-T = 50 * 60; % recording time [s]
-t0 = 5 * 60; % start time of analysis [s];
-t1 = (50 - 5) * 60; % end time of analysis [s]
-
-filepath = './data';
-
-% pre-assign variables for faster processing
-nTime = zeros(1, length(vars));
-data = cell(1, length(vars)); % physiological signals
-groupList = cell(1, length(vars)); % IDs
-
-nSubj = cell(1, length(vars));
-nClass = zeros(1, length(vars));
-nStudiedSubjects = zeros(1, length(vars));
-
-% fill data matrix
-for var = 1 : length(vars)
-    % load data
-    path2file = fullfile(filepath, ['for_synchrony_', vars{var}]);
-    load(path2file);
-    
-    % load studied data
-    sig_all_studied = sig_firstclass_all(studiedClasses,studiedPeriods);
-
-    % compute number of classes and subjects
-    nSubj{var} = cellfun(@(x) length(x), sig_firstclass_all); % number of subjects for each class and each period
-    nClass(var) = length(studiedClasses);
-    nStudiedSubjects(var) = max(sum(nSubj{var}(studiedClasses,studiedPeriods),1)); % number of studied subjects according to chosen classes and periods
-    
-    % pre-assign variables for faster processing
-    nTime(var) = T*var_srate(var); % 50 min x 60 sec / min x 32 samp / sec %nb of times for each modality
-    nPeriod = length(studiedPeriods);
-    data{var} = nan(nStudiedSubjects(var), nTime(var),nPeriod); % will become physiological signals for each chosen modality
-    groupList{var} = zeros(nStudiedSubjects(var), 1); % will become IDs for each chosen modality
-    
-    % downsampling factor
-    if startsWith(vars(var),'eda')
-        downsample_var = downsample_eda;
-    else
-        downsample_var = downsample_hr;
-    end
-    
-    % fill matrix 'data' with responses
-    subj = 0;
-    for cl = 1 : nClass
-        for subj_in_cl = 1 : length(sig_firstclass_all{studiedClasses(cl)})
-            subj = subj + 1;
-            groupList{var}(subj) = studiedClasses(cl);
-            for period=1:nPeriod
-                if isempty(sig_all_studied{cl,period})
-                    continue
-                else
-                    if isempty(sig_all_studied{cl,period}{subj_in_cl})
-                        continue
-                    else
-                        sig = downsample(sig_all_studied{cl,period}{subj_in_cl},downsample_var);
-                        if length(sig) ~= nTime(var) % skip data with different number of times
-                            continue
-                        else
-                            data{var}(subj, :,period) = sig; % fill data
-                        end
-                    end
-                end
-            end
-        end 
-    end
-end
+[data,groupList,nSubj,nTime,nStudiedSubjects,nClass,nPeriod,infDiagModes,vars,t0,t1,var_srate] = initialize(infDiagModes,vars,studiedPeriods,studiedClasses,downsample_eda,downsample_hr);
 
 %% COMPUTE PHYSIOLOGICAL SYNCHRONY
 
 if readISC % we can safely compute new ISC as it has been stored in CSV
              % or user authorized to overwrite it
     readISC = false;
-    nComputation = 0; % counter just for indexing
-    isc = cell(1, length(vars)*length(infDiagModes));
-    for var = 1 : length(vars)
-        disp(vars{var})
-        for infDiag = infDiagModes
-            disp(infDiag)
-            nComputation = nComputation + 1; 
-            isc{nComputation} = nan(nStudiedSubjects(var), nStudiedSubjects(var),nPeriod,nPeriod);
-            for n1 = 1 : nStudiedSubjects(var)
-                disp(n1/nStudiedSubjects(var)*100); % percentage of done computation
-                for period1 = 1:nPeriod
-                    disp(period1); % can be removed
-                    for period2 = period1 : nPeriod
-                        if period2 == period1
-                            bound = n1;
-                        else
-                            bound = 1;
-                        end
-                        for n2 = bound : nStudiedSubjects(var)
-                            % present data in a struct input needed for 'ps_mwa'
-                            dat_subj_1.data = data{var}(n1,t0*var_srate(var)+1:t1*var_srate(var),period1);
-                            dat_subj_1.samplerate = var_srate(var);
-
-                            dat_subj_2.data = data{var}(n2,t0*var_srate(var)+1:t1*var_srate(var),period2);
-                            dat_subj_2.samplerate = var_srate(var);
-
-                            r = ps_mwa(dat_subj_1, dat_subj_2, ...
-                                    'CorWindow', 15, ...
-                                    'CorStep', 1); % synchrony signal
-
-                            if infDiag
-                                isc{nComputation}(n1,n2,period1,period2) = r.overall; % usual way to compute synchrony
-                            else
-                                isc{nComputation}(n1,n2,period1,period2) = nanmean(r.data(8:end-8)); % To avoid Inf on diagonal
-                            end
-                        end
-                    end
-                end 
-            end
-        end
-    end
+    isc = computeSynchrony(data,nStudiedSubjects,nPeriod,infDiagModes,vars,t0,t1,var_srate);
 end
 
 
@@ -155,103 +31,7 @@ iscPrevious1 = isc;
 %% WRITE SYNCHRONY MATRIX IN CSV
 if ~readISC % ISC has not been written yet, so we can do it according to 
             % chosen modalities and the way of computing synchrony. 
-    if length(infDiagModes) == 1
-        if infDiagModes
-            if length(vars) == 2
-                if startsWith(vars{1},'eda')
-                    writematrix(isc{1},strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{2},strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('schoolInf_EDA_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                else
-                    writematrix(isc{1},strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{2},strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('schoolInf_IBI_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                end
-            else
-                if startsWith(vars{1},'eda')
-                    writematrix(isc{1},strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                else
-                    writematrix(isc{1},strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                end
-            end
-        else
-            if length(vars) == 2
-                if startsWith(vars{1},'eda')
-                    writematrix(isc{1},strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{2},strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('school_EDA_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                else
-                    writematrix(isc{1},strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{2},strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('school_IBI_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                end
-            else
-                if startsWith(vars{1},'eda')
-                    writematrix(isc{1},strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                else
-                    writematrix(isc{1},strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                end
-            end
-        end
-    else
-        if infDiagModes(1)
-            if length(vars) == 2
-                if startsWith(vars{1},'eda')
-                    writematrix(isc{1},strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{2},strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{3},strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{4},strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('schoolInfAvg_EDA_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                else
-                    writematrix(isc{1},strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{2},strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{3},strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{4},strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('schoolInfAvg_IBI_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                end
-            else
-                if startsWith(vars{1},'eda')
-                    writematrix(isc{1},strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{2},strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('schoolInfAvg_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                else
-                    writematrix(isc{1},strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{2},strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('schoolInfAvg_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                end
-            end
-        else
-            if length(vars) == 2
-                if startsWith(vars{1},'eda')
-                    writematrix(isc{1},strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{2},strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{3},strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{4},strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('schoolAvgInf_EDA_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                else
-                    writematrix(isc{1},strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{2},strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{3},strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{4},strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('schoolAvgInf_IBI_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                end
-            else
-                if startsWith(vars{1},'eda')
-                    writematrix(isc{1},strcat('school_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{2},strcat('schoolInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('schoolAvgInf_EDA',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                else
-                    writematrix(isc{1},strcat('school_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    writematrix(isc{2},strcat('schoolInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.csv'));
-                    save(strcat('schoolAvgInf_IBI',num2str(studiedPeriods),'_',num2str(studiedClasses),'.mat'),'isc');
-                end
-            end
-        end
-    end
+    writeSynchrony(isc,infDiagModes,vars,studiedPeriods,studiedClasses);
 end
 
 % ISC matrix has just been stored in csv, we can safely change isc matrix
@@ -263,28 +43,16 @@ iscPrevious = isc;
 
 %% WRITE TRUE GROUPS in CSV
 if nClass == 17 % write only if every classes are selected to match with Python then
-    if length(vars) == 2
-        if startsWith(vars{1},'eda')
-            writematrix(groupList{1},'conditionSchool_EDA.csv');
-            writematrix(groupList{2},'conditionSchool_IBI.csv');
-        else
-            writematrix(groupList{1},'conditionSchool_IBI.csv');
-            writematrix(groupList{2},'conditionSchool_EDA.csv');
-        end
-    else
-        if startsWith(vars{1},'eda')
-            writematrix(groupList{1},'conditionSchool_EDA.csv');
-        else
-            writematrix(groupList{1},'conditionSchool_IBI.csv');
-        end
-    end
+    writeGT(groupList,vars);
 end
 
 %% READ SYNCHRONY MATRIX IN CSV 
 if readISC % we can overwrite isc matrix if user authorized it, or overwrite 
            % by previously computed matrix according to chosen modalities 
            % and the way of computing synchrony
-    readSynchrony(infDiagModes,vars,studiedPeriods,studiedClasses);
+    isc = readSynchrony(infDiagModes,vars,studiedPeriods,studiedClasses);
+    groupList = readGT(vars);
+    %groupList = groupList(find(sum(groupList==studiedClasses,2)));
 end
 %% COMPUTE SYNCHRONY WITH OWN GROUP AND OTHER GROUP
 % parameters
@@ -301,62 +69,14 @@ if length(studiedClasses) == 17
     nClassesCombination = 2;
     allClasses = nchoosek(1:17,nClassesCombination); % all nClassesCombination-classes permutations
     accClasses = zeros(length(allClasses), length(vars)*length(infDiagModes));
-    for i=1:length(allClasses)
-        % pre-assignement / parameters
-        isc_to_group = cell(1, length(vars)*length(infDiagModes));
-        accuracy = zeros(1, length(vars)*length(infDiagModes));
-        periodsToLookAt = studiedPeriods(1); % Look at only one period
-        classesToLookAt = allClasses(i,:);
-        tmpnSubj = cell(1, length(vars));
-        nPeriod = length(periodsToLookAt);
-        nClass = length(classesToLookAt);
-        symIsc = cell(1, length(vars)*length(infDiagModes));
-        groupListStudied = cell(1, length(vars));
-        nComputation = 0; % counter just for indexing
+    nComputation = 0; % counter just for indexing
 
-        for var = 1 : length(vars)
-            for infDiag = infDiagModes
-                nComputation = nComputation + 1;
-                tmpnSubj{var} = zeros(size(nSubj)); % number of subjects for each class and each period (can be different from nSubj if classesToLookAt != studiedClasses or periodsToLookAt != studiedPeriods) 
-                tmpnSubj{var}(classesToLookAt,periodsToLookAt) = nSubj{var}(classesToLookAt,periodsToLookAt);
-
-                groupListStudied{var} = groupList{var}(find(sum(groupList{var}==classesToLookAt,2)));
-
-                % make isc symmetrical (use a trick with NaNs) to well compute isc_to_group
-                symIsc{nComputation} = isc{nComputation};
-                symIsc{nComputation}(isnan(symIsc{nComputation})) = 1j;
-                symIsc{nComputation} = (symIsc{nComputation}+permute(symIsc{nComputation},[2 1 3 4]));    
-                NaNsLocation = imag(symIsc{nComputation});
-                symIsc{nComputation} = real(symIsc{nComputation});
-                symIsc{nComputation}(NaNsLocation==2) = nan;
-
-                subj = 0;
-                isc_to_group{nComputation} = zeros(nStudiedSubjects(var)*nPeriod, 2);
-                for p = 1:nPeriod
-                    period = periodsToLookAt(p); % studied period
-                    periodIdx = find(studiedPeriods==period); % period index in isc
-                    for n1 = 1 : sum(tmpnSubj{var}(classesToLookAt,period))
-                        subj = subj + 1;
-                        % own group
-                        if find(groupListStudied{var} == groupListStudied{var}(n1)) == n1
-                            isc_to_group{nComputation}(subj,1) = 1;
-                        else
-                            isc_to_group{nComputation}(subj,1) = nanmean(symIsc{nComputation}(n1, setdiff(find(groupListStudied{var} == groupListStudied{var}(n1)), n1), periodIdx, periodIdx)); % ISC within group
-                        end
-                        % other group
-                        if (length(periodsToLookAt) > 1)
-                            isc_to_group{nComputation}(subj,2) = nanmean(symIsc{nComputation}(n1, groupListStudied{var} ~= groupListStudied{var}(n1),setdiff(1:nPeriod, periodIdx),setdiff(1:nPeriod, periodIdx)),'all'); % ISC between groups
-                        else
-                            isc_to_group{nComputation}(subj,2) = nanmean(symIsc{nComputation}(n1, groupListStudied{var} ~= groupListStudied{var}(n1),periodIdx,periodIdx),'all'); % ISC between groups
-                        end
-                    end
-                end
-                
-                % compute accuracy
-                diffWithoutNans = diff(isc_to_group{nComputation}(1 : sum(tmpnSubj{var}(classesToLookAt,periodsToLookAt),'all'),:),1,2); % remove zeros (not studied groups)
-                diffWithoutNans = diffWithoutNans(~isnan(diffWithoutNans)); % remove NaNs
-                accuracy(nComputation) = sum(diffWithoutNans<0) / length(diffWithoutNans);
-                accClasses(i,nComputation) = accuracy(nComputation);
+    for var = 1 : length(vars)
+        for infDiag = infDiagModes
+            nComputation = nComputation + 1;
+            for i=1:length(allClasses)
+                classesToLookAt = allClasses(i,:);
+                [isc_to_group,accClasses(i,nComputation)] = computeIscToGroup(isc,groupList,nSubj,nStudiedSubjects,infDiagModes,vars,studiedPeriods,periodsToLookAt,classesToLookAt);
             end
         end
     end
@@ -372,8 +92,8 @@ end
 
 infDiagModes = false;
 vars = {'eda_all_classes'};
-studiedPeriods = 1:7;
-studiedClasses = [1,4];
+studiedPeriods = 1:3;
+studiedClasses = [1];
 
 if readISC % we can overwrite isc matrix if user authorized it, or overwrite 
            % by previously computed matrix according to chosen modalities 
@@ -383,7 +103,7 @@ end
 
 classesToLookAt = studiedClasses;
 nPeriodsCombination = 2;
-allPeriods = nchoosek(1:7,nPeriodsCombination); % all nClassesCombination-classes permutations
+allPeriods = nchoosek(studiedPeriods,nPeriodsCombination); % all nPeriodsCombination-periods permutations
 accPeriods = zeros(length(allPeriods), length(vars)*length(infDiagModes));
 nComputation = 0; % counter just for indexing
 
@@ -398,7 +118,7 @@ for var = 1 : length(vars)
 end
 
 %% PLOT ACCURACY FOR EACH COMBINATION OF PERIODS
-if length(studiedPeriods) == 7
+if length(studiedPeriods) == 3
     figure;
     plot(accPeriods);
 end
